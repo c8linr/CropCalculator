@@ -3,20 +3,13 @@
 # Author: Caitlin Ross
 #
 
-library(shiny)
+pacman::p_load(pacman, DBI, shiny, RMariaDB)
 
-# Define server logic required to draw a histogram
+# Define server logic required to calculate profitability
 shinyServer(function(input, output) {
-
-    output$distPlot <- renderPlot({
-
-        # generate bins based on input$bins from ui.R
-        x    <- faithful[, 2]
-        bins <- seq(min(x), max(x), length.out = input$bins + 1)
-
-        # draw the histogram with the specified number of bins
-        hist(x, breaks = bins, col = 'darkgray', border = 'white')
-
-    })
-
+  #Connect to the database
+  con <- dbConnect(RMariaDB::MariaDB(), default.file='..\\.my.cnf', group='rs-dbi', dbname='cropdata')
+  
+  #Disconnect from the database
+  dbDisconnect(con)
 })
