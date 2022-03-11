@@ -3,6 +3,7 @@
 # Author: Caitlin Ross
 #
 
+if (!require("pacman")) install.packages("pacman")
 pacman::p_load(pacman, DBI, shiny, RMariaDB)
 
 # Define server logic required to calculate profitability
