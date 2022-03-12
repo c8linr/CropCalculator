@@ -4,7 +4,7 @@
 #
 
 if (!require("pacman")) install.packages("pacman")
-pacman::p_load(pacman, DBI, shiny, RMariaDB, tidyverse)
+pacman::p_load(pacman, shiny, DBI, RMariaDB, tidyverse)
 
 # Define server logic required to calculate profitability
 shinyServer(function(input, output, session) {
@@ -12,21 +12,25 @@ shinyServer(function(input, output, session) {
   con <- dbConnect(RMariaDB::MariaDB(), default.file='..\\.my.cnf', group='rs-dbi', dbname='cropdata')
   
   #Create the list of crops for the user to choose from
-  crop_vector <- c(dbGetQuery(con, "SELECT DISTINCT CROP FROM cropdata.canadian_crop_yields;"))
-  crop_vector <- c(crop_vector, dbGetQuery(con, "SELECT DISTINCT `Type of crop` FROM cropdata.est_prodval_field_crops;"))
-  crop_vector <- c(crop_vector, dbGetQuery(con, "SELECT DISTINCT Commodity FROM cropdata.prodval_marketed_veg;"))
-  crop_vector <- c(crop_vector, dbGetQuery(con, "SELECT DISTINCT Commodity FROM cropdata.prodval_marketed_fruits;"))
-  crop_vector <- c(crop_vector, dbGetQuery(con, "SELECT DISTINCT Commodity FROM cropdata.prodval_greenhouse_fruit_veg;"))
-  crop_vector <- c(crop_vector, dbGetQuery(con, "SELECT DISTINCT CmdtyEn_PrdtAn FROM cropdata.weekly_wholesale_product_prices;"))
-  
-  #Tidy list of crops that the user can choose from
-  for(crop in crop_vector) {
-    crop %>% str_to_lower()
-    str_remove_all(crop, "[:digit:]+")
-  }
+  crop_vector <- c(dbGetQuery(con, "SELECT crop FROM cropdata.crop_list;"))
   
   #Update the crop selection widget
   updateSelectInput(session, "crop", choices = crop_vector)
+  
+  #Get the list of valid locations
+  canada_places <- c(dbGetQuery(con, "SELECT DISTINCT PNname FROM cropdata.place_names;"))
+  
+  output$calculation <- reactive({
+    #Validate the location
+    is_valid_location <- FALSE
+    for(place in canada_places) {
+      if(input$location == place) {
+        is_valid_location = TRUE
+      }
+    }
+    shinyFeedback::feedbackWarning("location", !is_valid_location, "Invalid location")
+    calculation <- str_c("The estimated profitability for ", input$crop, " in ", input$location, " is $X")
+  })
   
   #Disconnect from the database
   dbDisconnect(con)

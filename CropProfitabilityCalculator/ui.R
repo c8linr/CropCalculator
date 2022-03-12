@@ -8,10 +8,17 @@ pacman::p_load(shiny)
 
 # Define UI for application that draws a histogram
 shinyUI(fluidPage(
-
+    shinyFeedback::useShinyFeedback(),
+    
     # Application title
     titlePanel("Canadian Crop Profitability Calculator"),
 
     #Select the crop
-    selectInput("crop", label = "Select Crop", choices = NULL)
+    selectInput("crop", label = "Select Crop", choices = NULL),
+    
+    #Input the location
+    textInput("location", label="Enter Location"),
+    
+    #Output the profitability calculation
+    textOutput("calculation")
 ))
