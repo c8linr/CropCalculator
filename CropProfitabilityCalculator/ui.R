@@ -19,6 +19,9 @@ shinyUI(fluidPage(
     #Input the location
     textInput("location", label="Enter Location"),
     
+    #Submit button
+    actionButton("calculate", "Calculate"),
+    
     #Output the profitability calculation
     textOutput("calculation")
 ))
