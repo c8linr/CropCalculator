@@ -1,0 +1,17 @@
+default:
+  dataconnection:
+    driver: 'MySQL ODBC 8.0 Unicode Driver'
+    server: 'localhost'
+    uid: 'cajross'
+    pwd: '2xT#C9Sx2gCo'
+    port: 3306
+    database: 'cropdata'
+    
+shinyapps:
+  dataconnection:
+    driver: 'MySQL'
+    server: 'serv-17262.my-tss.com'
+    uid: 'theworld_c8linr'
+    pwd: 'h9rbSdQ!WEW!wy'
+    port: 3306
+    database: 'theworld_cropdata'
