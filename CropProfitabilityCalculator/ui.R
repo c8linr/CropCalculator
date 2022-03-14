@@ -3,8 +3,10 @@
 # Author: Caitlin Ross
 #
 
-if (!require("pacman")) install.packages("pacman")
-pacman::p_load(shiny)
+#if (!require("pacman")) install.packages("pacman")
+#pacman::p_load(shiny)
+
+library(shiny)
 
 # Define UI for application that draws a histogram
 shinyUI(fluidPage(

@@ -3,13 +3,27 @@
 # Author: Caitlin Ross
 #
 
-if (!require("pacman")) install.packages("pacman")
-pacman::p_load(pacman, shiny, DBI, RMariaDB, tidyverse)
+#if (!require("pacman")) install.packages("pacman")
+#pacman::p_load(pacman, shiny, DBI, tidyverse)
+
+library(pacman)
+library(shiny)
+library(DBI)
+library(config)
+library(tidyverse)
 
 # Define server logic required to calculate profitability
 shinyServer(function(input, output, session) {
+  #Setup to allow for different config parameters depending on whether I'm running the local or remote instance
+  conn_args <- config::get('dataconnection')
   #Connect to the database
-  con <- dbConnect(RMariaDB::MariaDB(), default.file='..\\.my.cnf', group='rs-dbi', dbname='cropdata')
+  con <- dbConnect(odbc::odbc(),
+                   Driver = conn_args$driver,
+                   Server = conn_args$server,
+                   UID = conn_args$uid,
+                   PWD = conn_args$pwd,
+                   Port = conn_args$port,
+                   Database = conn_args$database)
   
   #Create the list of crops for the user to choose from
   crop_vector <- c(dbGetQuery(con, "SELECT crop FROM cropdata.crop_list;"))
@@ -23,7 +37,13 @@ shinyServer(function(input, output, session) {
   #Validate the location when the submit button is pressed
   output$calculation <- eventReactive(input$calculate, {
     # Connect to the database IN SCOPE
-    con2 <- dbConnect(RMariaDB::MariaDB(), default.file='..\\.my.cnf', group='rs-dbi', dbname='cropdata')
+    con2 <- dbConnect(odbc::odbc(),
+                      Driver = conn_args$driver,
+                      Server = conn_args$server,
+                      UID = conn_args$uid,
+                      PWD = conn_args$pwd,
+                      Port = conn_args$port,
+                      Database = conn_args$database)
     
     # Construct the query string
     query <- str_c("SELECT DISTINCT PNname FROM cropdata.place_names WHERE PNname=\"", str_to_lower(input$location), "\";")
