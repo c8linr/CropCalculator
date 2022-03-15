@@ -3,10 +3,6 @@
 # Author: Caitlin Ross
 #
 
-#if (!require("pacman")) install.packages("pacman")
-#pacman::p_load(pacman, shiny, DBI, tidyverse)
-
-library(pacman)
 library(shiny)
 library(DBI)
 library(config)
@@ -14,8 +10,10 @@ library(tidyverse)
 
 # Define server logic required to calculate profitability
 shinyServer(function(input, output, session) {
-  #Setup to allow for different config parameters depending on whether I'm running the local or remote instance
+  
+  #Load different config parameters depending on whether I'm running the local or remote instance
   conn_args <- config::get('dataconnection')
+  
   #Connect to the database
   con <- dbConnect(odbc::odbc(),
                    Driver = conn_args$driver,
@@ -26,7 +24,7 @@ shinyServer(function(input, output, session) {
                    Database = conn_args$database)
   
   #Create the list of crops for the user to choose from
-  crop_vector <- c(dbGetQuery(con, "SELECT crop FROM cropdata.crop_list;"))
+  crop_vector <- c(dbGetQuery(con, "SELECT crop FROM crop_list;"))
   
   #Disconnect from the database
   dbDisconnect(con)
@@ -46,7 +44,7 @@ shinyServer(function(input, output, session) {
                       Database = conn_args$database)
     
     # Construct the query string
-    query <- str_c("SELECT DISTINCT PNname FROM cropdata.place_names WHERE PNname=\"", str_to_lower(input$location), "\";")
+    query <- str_c("SELECT DISTINCT PNname FROM place_names WHERE PNname=\"", str_to_lower(input$location), "\";")
     
     #Get the result set of the query
     res <- c(dbGetQuery(con2, query))
@@ -57,11 +55,13 @@ shinyServer(function(input, output, session) {
     #Display a warning if the location is invalid
     shinyFeedback::feedbackWarning("location", !valid_location, "Invalid location")
     
-    #Require the location to be valid
+    #Require the location to be valid in order to process the input
     req(valid_location)
     
     #Close the in-scope DB connection
     dbDisconnect(con2)
+    
+    #TODO: Calculate the output
     
     #Display the result
     calculation <- str_c("The estimated profitability for ", input$crop, " in ", str_to_title(input$location), " is $X")

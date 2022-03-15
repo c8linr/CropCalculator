@@ -25,3 +25,4 @@
 # query <- str_c("SELECT DISTINCT PNname FROM cropdata.place_names WHERE PNname=\"", str_to_lower(test_location), "\";")
 # res <- c(dbGetQuery(con, query))
 # identical(c(tolower(test_location)), c(tolower(res)))
+

@@ -3,12 +3,9 @@
 # Author: Caitlin Ross
 #
 
-#if (!require("pacman")) install.packages("pacman")
-#pacman::p_load(shiny)
-
 library(shiny)
 
-# Define UI for application that draws a histogram
+# Define UI for application
 shinyUI(fluidPage(
     shinyFeedback::useShinyFeedback(),
     
