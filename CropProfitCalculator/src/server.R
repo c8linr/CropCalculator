@@ -44,19 +44,28 @@ shinyServer(function(input, output, session) {
                       Database = conn_args$database)
     
     # Construct the query string
-    query <- str_c("SELECT DISTINCT PNname FROM place_names WHERE PNname=\"", str_to_lower(input$location), "\";")
+    query_names <- str_c("SELECT DISTINCT PNname FROM place_names WHERE PNname=\"", str_to_lower(input$location), "\";")
     
     #Get the result set of the query
-    res <- c(dbGetQuery(con2, query))
+    res_names <- c(dbGetQuery(con2, query_names))
     
     #Determine if the location is valid
-    valid_location <- identical(c(str_to_lower(input$location)), c(tolower(res)))
+    valid_location <- identical(c(str_to_lower(input$location)), c(tolower(res_names)))
     
     #Display a warning if the location is invalid
     shinyFeedback::feedbackWarning("location", !valid_location, "Invalid location")
     
     #Require the location to be valid in order to process the input
     req(valid_location)
+    
+    #If the location is valid, save the latitude and longitude for future calculations
+    # if(valid_location) {
+    #   query_lat <- str_c("SELECT PNrplat FROM place_names WHERE PNname=\"", str_to_upper(input$location), "\";");
+    #   res_lat <- ;
+    #   
+    #   query_long <- str_c("SELECT PNrplat FROM place_names WHERE PNname=\"", str_to_upper(input$location), "\";");
+    #   res_long <- ;
+    # }
     
     #Close the in-scope DB connection
     dbDisconnect(con2)
