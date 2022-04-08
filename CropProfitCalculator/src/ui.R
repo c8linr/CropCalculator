@@ -16,7 +16,7 @@ shinyUI(fluidPage(
     selectInput("crop", label = "Select Crop", choices = NULL),
     
     #Input the location
-    textInput("location", label="Enter Location"),
+    textInput("location", label="Enter Location, Including Province"),
     
     #Submit button
     actionButton("calculate", "Calculate"),
