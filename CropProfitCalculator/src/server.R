@@ -3,6 +3,7 @@
 # Author: Caitlin Ross
 #
 
+#Load required libraries
 library(shiny)
 library(DBI)
 library(config)
@@ -34,8 +35,11 @@ shinyServer(function(input, output, session) {
     #Require the location to be valid in order to process the input
     req(valid_location)
     
-    #TODO: Calculate the output
+    #Get the estimated expense per acre
     est_expense <- estimate_expenses_per_acre(conn_args, prov)
+    
+    #Get the estimated revenue per acre
+    est_revenue <- estimate_revenue_per_acre(conn_args, prov, input$crop)
     
     #Display the result
     calculation <- str_c("The estimated expenses for ",
@@ -45,7 +49,7 @@ shinyServer(function(input, output, session) {
                          ", ",
                          prov,
                          " is $",
-                         prettyNum(est_expense, digits=2, format="f"),
+                         prettyNum(est_expense, digits=4, format="g"),
                          " per acre")
   })
 })
@@ -63,7 +67,7 @@ load_croplist <- function(conn_args) {
   
   #Create the list of crops for the user to choose from
   crop_vector <- c(dbGetQuery(con, 
-                              "SELECT crop FROM crop_list;"))
+                              "SELECT NAME FROM croplist;"))
   
   #Disconnect from the database
   dbDisconnect(con)
@@ -217,4 +221,26 @@ estimate_expenses_per_acre <- function(conn_args, prov) {
   
   #Return the result
   expense_res
+}
+
+estimate_revenue_per_acre <- function(conn_args, prov, crop) {
+  #Connect to the database
+  con <- dbConnect(odbc::odbc(),
+                   Driver = conn_args$driver,
+                   Server = conn_args$server,
+                   UID = conn_args$uid,
+                   PWD = conn_args$pwd,
+                   Port = conn_args$port,
+                   Database = conn_args$database)
+  
+  #Get the estimated yield per acre in kilograms
+  
+  
+  #Get the estimated price per kilo
+  
+  
+  #Disconnect from the database
+  dbDisconnect(con)
+  
+  #Return the estimated revenue per acre (yield x price)
 }
