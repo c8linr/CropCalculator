@@ -20,66 +20,33 @@ shinyServer(function(input, output, session) {
   
   #Validate the location when the submit button is pressed
   output$calculation <- eventReactive(input$calculate, {
-    # Connect to the database IN SCOPE
-    con <- dbConnect(odbc::odbc(),
-                      Driver = conn_args$driver,
-                      Server = conn_args$server,
-                      UID = conn_args$uid,
-                      PWD = conn_args$pwd,
-                      Port = conn_args$port,
-                      Database = conn_args$database)
-    
     #Break the user's input into place name and province
     loc_vector <- str_split_fixed(c(input$location), ",", n=2)
     place_name <- str_to_lower(str_c(loc_vector[1,1]))
     prov <- prov_name_clean(str_c(loc_vector[1,2]))
     
-    #Get the result set of the query
-    res_names <- c(dbGetQuery(con, 
-                              str_c("SELECT DISTINCT place_names.PNname 
-                                    FROM place_names 
-                                    INNER JOIN province ON place_names.PRidu = province.PRcode
-                                    WHERE place_names.PNname=\"", 
-                                    place_name, 
-                                    "\" AND province.PRname=\"", 
-                                    prov,
-                                    "\";")))
-    
-    #Determine if the location is valid
-    valid_location <- identical(place_name, c(tolower(res_names)))
+    #TODO: Fix the bug with accents in the result set
+    valid_location <- verify_location(conn_args, place_name, prov)
     
     #Display a warning if the location is invalid
-    shinyFeedback::feedbackWarning("location", !valid_location, str_c(place_name, ", ", prov, " is not a valid location"))
+    shinyFeedback::feedbackWarning("location", !valid_location, str_c(str_to_title(place_name), ", ", prov, " is not a valid location"))
     
     #Require the location to be valid in order to process the input
     req(valid_location)
     
-    #Create variables to hold the latitude and longitude, assign them the null value
-    lat <- long <- NA
-    
-    #If the location is valid, save the latitude and longitude for future calculations
-    if(valid_location) {
-      res_lat <- c(dbGetQuery(con, 
-                              str_c("SELECT PNrplat FROM place_names WHERE PNname=\"", 
-                                    str_to_upper(input$location), 
-                                    "\";")))
-      lat <- res_lat[0]
-
-      res_long <- c(dbGetQuery(con, 
-                               str_c("SELECT PNrplat FROM place_names WHERE PNname=\"", 
-                                     str_to_upper(input$location), 
-                                     "\";")))
-      long <- res_long[0]
-    }
-    
-    #Close the in-scope DB connection
-    dbDisconnect(con)
-    
     #TODO: Calculate the output
-
+    est_expense <- estimate_expenses_per_acre(conn_args, prov)
     
     #Display the result
-    calculation <- str_c("The estimated profitability for ", input$crop, " in ", str_to_title(place_name), ", ", prov, " is $X")
+    calculation <- str_c("The estimated expenses for ",
+                         input$crop,
+                         " in ",
+                         str_to_title(place_name),
+                         ", ",
+                         prov,
+                         " is $",
+                         prettyNum(est_expense, digits=2, format="f"),
+                         " per acre")
   })
 })
 
@@ -103,6 +70,35 @@ load_croplist <- function(conn_args) {
   
   #Return the list of crops
   crop_vector
+}
+
+#Determines if the location is valid
+verify_location <- function(conn_args, place, province) {
+  # Connect to the database
+  con <- dbConnect(odbc::odbc(),
+                   Driver = conn_args$driver,
+                   Server = conn_args$server,
+                   UID = conn_args$uid,
+                   PWD = conn_args$pwd,
+                   Port = conn_args$port,
+                   Database = conn_args$database)
+  
+  #Get the result set of the query
+  res_names <- c(dbGetQuery(con, 
+                            str_c("SELECT DISTINCT place_names.PNname 
+                                    FROM place_names 
+                                    INNER JOIN province ON place_names.PRidu = province.PRcode
+                                    WHERE place_names.PNname=\"", 
+                                  place, 
+                                  "\" AND province.PRname=\"", 
+                                  province,
+                                  "\";")))
+  
+  #Close the DB connection
+  dbDisconnect(con)
+
+  #Return whether the location is valid
+  identical(place, str_remove_all(str_to_lower(stri_trans_nfd(str_c(res_names))), "[^a-z,A-Z]"))
 }
 
 #Returns the properly capitalized province name, in case the user inputted a partial name or code
@@ -195,7 +191,30 @@ prov_name_clean <- function(prov_input) {
          "Invalid Province")
 }
 
-#Returns the closest location in the dataset to the user's chosen location
-closest_location <- function(lat, long, dataset) {
-  #TODO: find closest location in result set
+estimate_expenses_per_acre <- function(conn_args, prov) {
+  #Connect to the database
+  con <- dbConnect(odbc::odbc(),
+                   Driver = conn_args$driver,
+                   Server = conn_args$server,
+                   UID = conn_args$uid,
+                   PWD = conn_args$pwd,
+                   Port = conn_args$port,
+                   Database = conn_args$database)
+  
+  #Get the estimated expenses per acre
+  expense_res <- dbGetQuery(con,
+                        str_c("SELECT (sum(exp.VALUE) / sum(land.VALUE))",
+                              " FROM operating_expenses AS exp ",
+                              "INNER JOIN census_land_use AS land ",
+                              "ON exp.GEO = land.GEO ",
+                              "WHERE exp.GEO LIKE \"%", prov, "%\" ",
+                              "AND exp.UOM=\"Dollars\" ",
+                              "AND land.LAND_USE LIKE \"Land in crops%\" ",
+                              "AND land.UOM = \"Acres\";"))
+  
+  #Disconnect from the database
+  dbDisconnect(con)
+  
+  #Return the result
+  expense_res
 }
