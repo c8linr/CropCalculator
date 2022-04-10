@@ -16,7 +16,7 @@ library(stringi)
 #Load the functions defined in other files
 source("functions.R")
 source("dbfunctions.R")
-source("classdefs.R")
+#source("classdefs.R")
 
 # Define server logic required to calculate profitability
 shinyServer(function(input, output, session) {
@@ -27,34 +27,45 @@ shinyServer(function(input, output, session) {
   #Update the crop selection widget by loading the list of crops
   updateSelectInput(session, "crop", choices = load_croplist(conn_args))
   
-  #Validate the location when the submit button is pressed
+  #Validate the location and display the calculation when the submit button is pressed
   output$calculation <- eventReactive(input$calculate, {
+    #Save the crop choice
+    crop_choice <- list(name=input$crop, type=get_crop_type(conn_args, input$crop))
+    
     #Split the user's input into place name and province
     loc_vector <- str_split_fixed(c(input$location), ",", n=2)
-    place_name <- str_to_lower(str_c(loc_vector[1,1]))
-    prov <- prov_name_clean(str_c(loc_vector[1,2]))
     
-    #TODO: Fix the bug with accents in the result set
-    valid_location <- verify_location(conn_args, place_name, prov)
+    #Save the place name and province as a list
+    location_choice <- list(place=str_to_lower(str_c(loc_vector[1,1])),
+                            province=prov_name_clean(str_c(loc_vector[1,2])))
+    
+    #TODO: Fix the issue with accents in the result set
+    valid_location <- verify_location(conn_args, location_choice)
     
     #Display a warning if the location is invalid
-    shinyFeedback::feedbackWarning("location", !valid_location, str_c(str_to_title(place_name), ", ", prov, " is not a valid location"))
+    shinyFeedback::feedbackWarning("location",
+                                   !valid_location,
+                                   str_c(location_choice$place,
+                                         ", ",
+                                         location_choice$province,
+                                         " is not a valid location"))
     
     #Require the location to be valid in order to process the input
     req(valid_location)
     
     #Calculate the profit (revenue/ace - expenses/ace)
-    est_profit <- est_rev(conn_args, prov, input$crop) - est_exp(conn_args, prov)
+    est_profit <- est_rev(conn_args, location_choice, crop_choice)
+                - est_exp(conn_args, location_choice)
     
     #Display the result
     calculation <- str_c("The estimated profit for ",
-                         input$crop,
+                         crop_choice$name,
                          " in ",
-                         str_to_title(place_name),
+                         str_to_title(location_choice$place),
                          ", ",
-                         prov,
+                         location_choice$province,
                          " is $",
-                         prettyNum(est_profit, digits=4, format="g"),
+                         prettyNum(est_rev(conn_args, location_choice, crop_choice), digits=4, format="g"),
                          " per acre")
   })
 })

@@ -97,3 +97,10 @@ prov_name_clean <- function(prov_input) {
          "nv" = NU,
          "Invalid Province")
 }
+
+convert_yield <- function(value, from_uom) {
+  if(from_uom == "Kilograms per hectare") {
+    value <- value * 0.404686
+  }
+  value
+}

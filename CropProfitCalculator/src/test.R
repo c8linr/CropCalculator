@@ -116,3 +116,27 @@
 #          "Invalid Province")
 # }
 
+loc <- list(place="Toronto", province="Ontario")
+crop <- list(name="rye", type="field")
+
+conn_args <- config::get('dataconnection')
+con <- dbConnect(odbc::odbc(),
+                 Driver = conn_args$driver,
+                 Server = conn_args$server,
+                 UID = conn_args$uid,
+                 PWD = conn_args$pwd,
+                 Port = conn_args$port,
+                 Database = conn_args$database)
+
+query <- str_c("SELECT avg(`VALUE`), UOM ",
+               "FROM est_prodval_field_crops ",
+               "WHERE HARVEST_DISPOSITION LIKE \"Average yield%\"", 
+               "AND GEO LIKE \"", loc$province, "\"",
+               "AND TYPE_OF_CROP LIKE \"%", crop$name,"%\"",
+               "GROUP BY UOM;")
+
+yield_res <- dbGetQuery(con, query)
+
+dbDisconnect(con)
+
+yield_res
