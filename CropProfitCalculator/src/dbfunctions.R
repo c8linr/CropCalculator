@@ -33,7 +33,7 @@ load_croplist <- function(conn_args) {
 }
 
 
-# Return the type of crop (field, fruit, vegetable, or greenhouse)
+# Return the type of crop (field, fruit, or vegetable)
 # Arguments:
 #   DB connection arguments as list object,
 #   Name of the crop as character vector
@@ -137,6 +137,36 @@ est_exp <- function(conn_args, loc) {
 #   Location as list object,
 #   Crop as list object
 est_rev <- function(conn_args, loc, crop) {
+  # Initialize revenue variable to 0
+  rev_per_acre <- 0
+  
+  # Get the estimated revenue per acre in CAD
+  # Delegates to separate functions based on type of crop
+  if(crop$type == "field") {
+    rev_per_acre <- est_rev_field(conn_args, loc, crop$name)
+    
+  } else if (crop$type == "fruit") {
+    rev_per_acre <- est_rev_fruit(conn_args, loc, crop$name)
+    
+  } else if (crop$type == "vegetable") {
+    rev_per_acre <- est_rev_veg(conn_args, loc, crop$name)
+    
+  } else {
+    # something went very wrong, assign null value
+    rev_per_acre <- NA
+  }
+  
+  # Return the estimated revenue per acre
+  rev_per_acre
+}
+
+
+# Returns the estimated revenue per acre of a field crop
+# Arguments:
+#   DB connection arguments as list object,
+#   Location as list object,
+#   Crop name as character vector
+est_rev_field <- function(conn_args, loc, crop_name) {
   #Connect to the database
   con <- dbConnect(odbc::odbc(),
                    Driver = conn_args$driver,
@@ -146,81 +176,148 @@ est_rev <- function(conn_args, loc, crop) {
                    Port = conn_args$port,
                    Database = conn_args$database)
   
-  # Initialize revenue variable to 0
-  rev_per_acre <- 0
+  # Build the query string for the yield
+  field_yield_query <- str_c("SELECT avg(`VALUE`), UOM ",
+                             "FROM est_prodval_field_crops ",
+                             "WHERE HARVEST_DISPOSITION LIKE \"Average yield%\" ", 
+                             "AND GEO LIKE \"", loc$province, "\" ",
+                             "AND TYPE_OF_CROP LIKE \"%", crop_name,"%\" ",
+                             "AND NOT `VALUE`=0 ",
+                             "GROUP BY UOM;")
   
-  # Get the estimated revenue per acre in CAD
-  if(crop$type == "field") {
-    # Build the query string for the yield
-    field_yield_query <- str_c("SELECT avg(prod.VALUE), prod.UOM ",
-                   "FROM est_prodval_field_crops AS prod ",
-                   "WHERE prod.HARVEST_DISPOSITION LIKE \"Average yield%\" ", 
-                   "AND prod.GEO LIKE \"", loc$province, "\" ",
-                   "AND prod.TYPE_OF_CROP LIKE \"%", crop$name,"%\" ",
-                   "AND NOT prod.VALUE=0 ",
-                   "GROUP BY prod.UOM;")
-    
-    # Query the database
-    field_yield_res <- dbGetQuery(con, field_yield_query)
-    
-    # Build the query string for the value
-    #field_val_query <- str_c("")
-    
-    # Query the database
-    #field_val_res <- dbGetQuery(con, field_val_query)
-    
-    # TODO: Get the relevant value from the data frame
-    
-  } else if (crop$type == "fruit") {
-    # Build the query string
-    fruit_query <- str_c("SELECT avg(`VALUE`), ESTIMATES, UOM ",
-                         "FROM prodval_marketed_fruits ",
-                         "WHERE GEO LIKE \"", loc$province, "\"",
-                         "AND COMMODITY LIKE \"", crop$name, "\"",
-                         "AND NOT `VALUE`=0",
-                         "GROUP BY ESTIMATES;")
-    
-    # Query the database
-    fruit_res <- dbGetQuery(con, fruit_query)
-    
-    # TODO: get the relevant value from the data frame
-    
-  } else if (crop$type == "vegetable") {
-    # Build the query string
-    veg_query <- str_c("SELECT avg(`VALUE`), ESTIMATES, UOM ",
-                         "FROM prodval_marketed_veg ",
-                         "WHERE GEO LIKE \"", loc$province, "\"",
-                         "AND COMMODITY LIKE \"", crop$name, "\"",
-                         "AND NOT `VALUE`=0",
-                         "GROUP BY ESTIMATES;")
-    
-    # Query the database
-    veg_res <- dbGetQuery(con, veg_query)
-    
-    # TODO: get the relevant value from the data frame
-    
-  } else if (crop$type == "greenhouse") {
-    # Build the query string
-    gh_query <- str_c("SELECT avg(`VALUE`), PRODUCTION_AND_VALUE, UOM ",
-                       "FROM prodval_greenhouse_fruit_veg ",
-                       "WHERE GEO LIKE \"", loc$province, "\"",
-                       "AND COMMODITY LIKE \"", crop$name, "\"",
-                       "AND NOT `VALUE`=0",
-                       "GROUP BY PRODUCTION_AND_VALUE, UOM;")
-    
-    # Query the database
-    gh_res <- dbGetQuery(con, gh_query)
-    
-    # TODO: get the relevant value from the data frame
-    
-  } else {
-    # something went very wrong, return invalid number
-    rev_per_acre <- NA
-  }
+  # Query the database
+  field_yield_res <- dbGetQuery(con, field_yield_query)
+  
+  # Retrieve the yield in kilograms per hectare
+  # Convert to kg per acre
+  field_yield <- 0.404686 * first(filter(field_yield_res,
+                                         UOM == 'Kilograms per hectare'))
+  
+  # Build the query string for the value
+  field_val_query <- str_c("SELECT avg(`VALUE`), GEO, FARM_PRODUCTS, UOM ",
+                           "FROM farm_product_prices ",
+                           "WHERE GEO LIKE \"%", loc$province, "%\" ",
+                           "AND FARM_PRODUCTS LIKE \"%", crop_name, "%\" ",
+                           "AND NOT `VALUE`=0 ",
+                           "GROUP BY UOM;")
+  
+  # Query the database
+  field_val_res <- dbGetQuery(con, field_val_query)
+  
+  # Retrieve the dollar value per metric tonne
+  # Covert to CAD per kilogram
+  field_value <- 0.001 * first(filter(field_val_res,
+                              UOM == 'Dollars per metric tonne'))
   
   # Disconnect from the database
   dbDisconnect(con)
   
-  # Return the estimated revenue per acre (yield x price)
-  rev_per_acre
+  # If the value query returned nothing, set to 0
+  if(is.na(field_value) || is.na(field_yield)) {
+    field_rev <- 0
+  } else {
+    # Multiply the value ($/kg) by the yield (kg/acre) to get revenue ($/acre)
+    field_rev <- field_value * field_yield
+  }
+  
+  field_rev
+}
+
+
+# Returns the estimated revenue per acre of a fruit crop
+# Arguments:
+#   DB connection arguments as list object,
+#   Location as list object,
+#   Crop name as character vector
+est_rev_fruit <- function(conn_args, loc, crop_name) {
+  #Connect to the database
+  con <- dbConnect(odbc::odbc(),
+                   Driver = conn_args$driver,
+                   Server = conn_args$server,
+                   UID = conn_args$uid,
+                   PWD = conn_args$pwd,
+                   Port = conn_args$port,
+                   Database = conn_args$database)
+  
+  # Build the query string
+  fruit_query <- str_c("SELECT avg(`VALUE`), ESTIMATES, UOM ",
+                       "FROM prodval_marketed_fruits ",
+                       "WHERE GEO LIKE \"%", loc$province, "%\" ",
+                       "AND COMMODITY LIKE \"%", crop_name, "%\" ",
+                       "AND NOT `VALUE`=0 ",
+                       "GROUP BY ESTIMATES;")
+  
+  # Query the database
+  fruit_res <- dbGetQuery(con, fruit_query)
+  
+  # Disconnect from the database
+  dbDisconnect(con)
+  
+  # Retrieve the total area planted
+  fruit_area <- first(filter(fruit_res,
+                             ESTIMATES == 'Cultivated area, total'))
+  
+  # Retrieve the total farm gate value
+  fruit_value <- first(filter(fruit_res,
+                              ESTIMATES == 'Farm gate value'))
+  
+  # Prevent dividing by 0
+  if(fruit_area == 0 || is.na(fruit_value)) {
+    fruit_rev <- 0
+    
+  } else {
+    # Return Farm Gate Value (in 1000s of dollars) * 1000 / Cultivated Area
+    fruit_rev <- (fruit_value  * 1000) / fruit_area
+  }
+  
+  fruit_rev
+}
+
+
+# Returns the estimated revenue per acre of a vegetable crop
+# Arguments:
+#   DB connection arguments as list object,
+#   Location as list object,
+#   Crop name as character vector
+est_rev_veg <- function(conn_args, loc, crop_name) {
+  #Connect to the database
+  con <- dbConnect(odbc::odbc(),
+                   Driver = conn_args$driver,
+                   Server = conn_args$server,
+                   UID = conn_args$uid,
+                   PWD = conn_args$pwd,
+                   Port = conn_args$port,
+                   Database = conn_args$database)
+  
+  # Build the query string
+  veg_query <- str_c("SELECT avg(`VALUE`), ESTIMATES, UOM ",
+                       "FROM prodval_marketed_veg ",
+                       "WHERE GEO LIKE \"%", loc$province, "%\" ",
+                       "AND COMMODITY LIKE \"%", crop_name, "%\" ",
+                       "AND NOT `VALUE`=0 ",
+                       "GROUP BY ESTIMATES;")
+  
+  # Query the database
+  veg_res <- dbGetQuery(con, veg_query)
+  
+  # Disconnect from the database
+  dbDisconnect(con)
+  
+  # Retrieve the total area planted
+  veg_area <- first(filter(veg_res,
+                             ESTIMATES == 'Area planted (acres)'))
+  
+  # Retrieve the total farm gate value
+  veg_value <- first(filter(veg_res,
+                              ESTIMATES == 'Farm gate value (dollars)'))
+  
+  # Prevent dividing by 0
+  if(veg_area == 0 || is.na(veg_value)) {
+    veg_rev <- 0
+  } else {
+    # Return Farm Gate Value (in 1000s of dollars) * 1000 / Cultivated Area
+    veg_rev <- (veg_value  * 1000) / veg_area
+  }
+  
+  veg_rev
 }

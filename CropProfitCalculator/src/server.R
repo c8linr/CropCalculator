@@ -16,7 +16,6 @@ library(stringi)
 #Load the functions defined in other files
 source("functions.R")
 source("dbfunctions.R")
-#source("classdefs.R")
 
 # Define server logic required to calculate profitability
 shinyServer(function(input, output, session) {
@@ -65,7 +64,10 @@ shinyServer(function(input, output, session) {
                          ", ",
                          location_choice$province,
                          " is $",
-                         prettyNum(est_rev(conn_args, location_choice, crop_choice), digits=4, format="g"),
+                         format(est_profit,
+                                trim=TRUE,
+                                digits=3,
+                                nsmall=2),
                          " per acre")
   })
 })
