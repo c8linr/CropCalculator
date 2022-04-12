@@ -2,7 +2,7 @@
 # Functions that access the database
 # Crop Profitability Calculator
 # Author: Caitlin Ross
-# Last Modified: 2022/04/10
+# Last Modified: 2022/04/12
 #
 
 
@@ -190,7 +190,7 @@ est_rev_field <- function(conn_args, loc, crop_name) {
   
   # Retrieve the yield in kilograms per hectare
   # Convert to kg per acre
-  field_yield <- 0.404686 * first(filter(field_yield_res,
+  field_yield <- first(filter(field_yield_res,
                                          UOM == 'Kilograms per hectare'))
   
   # Build the query string for the value
@@ -206,18 +206,18 @@ est_rev_field <- function(conn_args, loc, crop_name) {
   
   # Retrieve the dollar value per metric tonne
   # Covert to CAD per kilogram
-  field_value <- 0.001 * first(filter(field_val_res,
+  field_value <- first(filter(field_val_res,
                               UOM == 'Dollars per metric tonne'))
   
   # Disconnect from the database
   dbDisconnect(con)
   
   # If the value query returned nothing, set to 0
-  if(is.na(field_value) || is.na(field_yield)) {
-    field_rev <- 0
+  if(is.null(field_value) || is.null(field_yield)) {
+    field_rev <- 0.0
   } else {
     # Multiply the value ($/kg) by the yield (kg/acre) to get revenue ($/acre)
-    field_rev <- field_value * field_yield
+    field_rev <- 0.001 * field_value * 0.404686 * field_yield
   }
   
   field_rev
@@ -262,7 +262,7 @@ est_rev_fruit <- function(conn_args, loc, crop_name) {
                               ESTIMATES == 'Farm gate value'))
   
   # Prevent dividing by 0
-  if(fruit_area == 0 || is.na(fruit_value)) {
+  if(fruit_area == 0 || is.null(fruit_value)) {
     fruit_rev <- 0
     
   } else {
@@ -312,7 +312,7 @@ est_rev_veg <- function(conn_args, loc, crop_name) {
                               ESTIMATES == 'Farm gate value (dollars)'))
   
   # Prevent dividing by 0
-  if(veg_area == 0 || is.na(veg_value)) {
+  if(veg_area == 0 || is.null(veg_value)) {
     veg_rev <- 0
   } else {
     # Return Farm Gate Value (in 1000s of dollars) * 1000 / Cultivated Area
