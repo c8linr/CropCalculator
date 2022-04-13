@@ -1,8 +1,9 @@
 #
-# Back end
-# Crop Profitability Calculator
+# Shiny App back-end
+# Project: Crop Profitability Calculator
+# File: server.R
 # Author: Caitlin Ross
-# Last Modified: 2022/04/12
+# Last Modified: 2022/04/13
 #
 
 
@@ -38,13 +39,13 @@ shinyServer(function(input, output, session) {
     location_choice <- list(place=str_to_lower(str_c(loc_vector[1,1])),
                             province=prov_name_clean(str_c(loc_vector[1,2])))
     
-    #TODO: Fix the issue with accents in the result set
+    #Check if the location exists in the database
     valid_location <- verify_location(conn_args, location_choice)
     
     #Display a warning if the location is invalid
     shinyFeedback::feedbackWarning("location",
                                    !valid_location,
-                                   str_c(location_choice$place,
+                                   str_c(str_to_title(location_choice$place),
                                          ", ",
                                          location_choice$province,
                                          " is not a valid location"))
