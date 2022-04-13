@@ -1,8 +1,9 @@
 #
 # Functions (non-database)
-# Crop Profitability Calculator
+# Project: Crop Profitability Calculator
+# File: functions.R
 # Author: Caitlin Ross
-# Last Modified: 2022/04/12
+# Last Modified: 2022/04/13
 #
 
 

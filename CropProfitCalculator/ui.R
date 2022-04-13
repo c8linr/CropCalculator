@@ -1,8 +1,9 @@
 #
-# UI
-# Crop Profitability Calculator
+# Shiny App UI
+# Project: Crop Profitability Calculator
+# File: ui.R
 # Author: Caitlin Ross
-# Last Modified: 2022/04/10
+# Last Modified: 2022/04/13
 #
 
 
