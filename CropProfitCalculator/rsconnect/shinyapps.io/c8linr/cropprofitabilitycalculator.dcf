@@ -5,9 +5,7 @@ account: c8linr
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 5849527
-bundleId: 5688410
+bundleId: 5796512
 url: https://c8linr.shinyapps.io/cropprofitabilitycalculator/
-when: 1647376216.90387
-lastSyncTime: 1647376216.90387
-asMultiple: FALSE
-asStatic: FALSE
+when: 1649893725.85021
+lastSyncTime: 1649893725.85021
