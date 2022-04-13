@@ -91,8 +91,8 @@ verify_location <- function(conn_args, loc) {
   # Close the DB connection
   dbDisconnect(con)
   
-  # Return whether the location is valid
-  identical(loc$place, str_remove_all(str_to_lower(stri_trans_nfd(str_c(names_res))), "[^a-z,A-Z]"))
+  # Return whether there are results in the dataset
+  NROW(names_res) >= 1
 }
 
 
