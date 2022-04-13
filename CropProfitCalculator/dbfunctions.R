@@ -1,8 +1,9 @@
 #
 # Functions that access the database
-# Crop Profitability Calculator
+# Project: Crop Profitability Calculator
+# File: dbfunctions.R
 # Author: Caitlin Ross
-# Last Modified: 2022/04/12
+# Last Modified: 2022/04/13
 #
 
 
@@ -92,7 +93,7 @@ verify_location <- function(conn_args, loc) {
   dbDisconnect(con)
   
   # Return whether there are results in the dataset
-  NROW(names_res) >= 1
+  length(names_res$PNname) >= 1
 }
 
 
